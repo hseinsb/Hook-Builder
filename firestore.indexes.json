@@ -1,0 +1,15 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "hookResults",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,129 @@
+.saved-hooks-container {
+  background-color: var(--card-bg);
+  border-radius: var(--border-radius);
+  padding: 30px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+  margin-top: 40px;
+}
+
+.saved-hooks-container h2 {
+  font-size: 1.8rem;
+  color: var(--primary-color);
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 15px;
+}
+
+.saved-hooks-container.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 200px;
+  justify-content: center;
+}
+
+.saved-hooks-container.empty {
+  min-height: 200px;
+}
+
+.no-hooks-message {
+  opacity: 0.7;
+  text-align: center;
+  padding: 20px;
+}
+
+.saved-hooks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.saved-hook-item {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.saved-hook-item:hover {
+  background-color: rgba(122, 100, 255, 0.1);
+  border-color: var(--primary-color);
+}
+
+.saved-hook-item.expanded {
+  background-color: rgba(122, 100, 255, 0.15);
+  border-color: var(--primary-color);
+}
+
+.hook-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hook-text {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.hook-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.hook-date,
+.hook-score {
+  padding: 4px 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.hook-details {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.detail-section h4 {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
+.detail-section p {
+  font-size: 1rem;
+  opacity: 0.9;
+  font-style: italic;
+}
+
+.detail-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.action-button {
+  padding: 8px 15px;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.copy-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
+}
+
+.copy-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
