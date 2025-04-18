@@ -1,0 +1,5 @@
+warning: in the working copy of 'src/services/openaiService.js', LF will be replaced by CRLF the next time Git touches it
+src/App.css
+src/App.js
+src/services/firebaseService.js
+src/services/openaiService.js

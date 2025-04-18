@@ -1,25 +1,21 @@
-import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
   collection,
   addDoc,
   getDocs,
   query,
   orderBy,
-  limit,
+  limit as fsLimit,
+  serverTimestamp,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import {
-  getAuth,
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
-import { firebaseConfig, authConfig } from "../config";
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+import { authConfig } from "../config";
+import { db, auth } from "../firebase";
 
 /**
  * Check if a user is authorized to use the application
@@ -99,7 +95,28 @@ export const saveHookResult = async (hookData) => {
     console.log("Hook result saved with ID: ", docRef.id);
     return docRef;
   } catch (error) {
-    console.error("Error saving hook result: ", error);
+    throw error;
+  }
+};
+
+/**
+ * Save a script to Firebase
+ * @param {Object} scriptData - The script data to save
+ * @returns {Promise} - The promise of the save operation
+ */
+export const saveScript = async (scriptData) => {
+  try {
+    // Add a timestamp to the data
+    const scriptWithTimestamp = {
+      ...scriptData,
+      timestamp: serverTimestamp(),
+    };
+
+    const docRef = await addDoc(collection(db, "scripts"), scriptWithTimestamp);
+    console.log("Script saved with ID: ", docRef.id);
+    return docRef;
+  } catch (error) {
+    console.error("Error saving script:", error);
     throw error;
   }
 };
@@ -114,7 +131,7 @@ export const getRecentHookResults = async (resultsLimit = 10) => {
     const q = query(
       collection(db, "hookResults"),
       orderBy("timestamp", "desc"),
-      limit(resultsLimit)
+      fsLimit(resultsLimit)
     );
 
     const querySnapshot = await getDocs(q);
@@ -130,6 +147,46 @@ export const getRecentHookResults = async (resultsLimit = 10) => {
     return results;
   } catch (error) {
     console.error("Error fetching recent hook results: ", error);
+    throw error;
+  }
+};
+
+// Get all saved scripts for the current user
+export const getSavedScripts = async () => {
+  if (!auth.currentUser) {
+    throw new Error("User must be signed in to fetch scripts");
+  }
+
+  try {
+    const scriptsSnapshot = await getDocs(
+      query(
+        collection(db, "users", auth.currentUser.uid, "scripts"),
+        orderBy("createdAt", "desc")
+      )
+    );
+
+    return scriptsSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+    }));
+  } catch (error) {
+    console.error("Error fetching scripts:", error);
+    throw error;
+  }
+};
+
+// Delete a saved script
+export const deleteScript = async (scriptId) => {
+  if (!auth.currentUser) {
+    throw new Error("User must be signed in to delete scripts");
+  }
+
+  try {
+    // Delete from the scripts collection, not the nested path
+    await deleteDoc(doc(db, "scripts", scriptId));
+  } catch (error) {
+    console.error("Error deleting script:", error);
     throw error;
   }
 };

@@ -3,17 +3,22 @@ import "./App.css";
 import HookForm from "./components/HookForm";
 import HookResults from "./components/HookResults";
 import SavedHooks from "./components/SavedHooks";
+import SavedScripts from "./components/SavedScripts";
+import ScriptGenerator from "./components/ScriptGenerator";
 import Login from "./components/Login";
 import Header from "./components/Header";
+import ApiTest from "./ApiTest";
 import { analyzeHook } from "./services/openaiService";
 import { getCurrentUser, isAuthorizedUser } from "./services/firebaseService";
+import { AuthProvider } from "./contexts/AuthContext";
 
 function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [showSavedHooks, setShowSavedHooks] = useState(false);
+  const [activeSection, setActiveSection] = useState("hook"); // 'hook', 'saved', 'script', 'savedScripts', or 'apitest'
+  const [editScriptData, setEditScriptData] = useState(null); // Data for editing a saved script
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -39,12 +44,12 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setResults(null);
-    setShowSavedHooks(false);
+    setActiveSection("hook");
+    setEditScriptData(null);
   };
 
   const handleHookSubmit = async (hookData) => {
     setIsLoading(true);
-    setShowSavedHooks(false);
     try {
       const hookAnalysis = await analyzeHook(hookData);
       setResults(hookAnalysis);
@@ -56,13 +61,12 @@ function App() {
     }
   };
 
-  const toggleSavedHooks = () => {
-    setShowSavedHooks((prev) => !prev);
-    // If showing saved hooks, clear the current results
-    if (!showSavedHooks) {
-      setResults(null);
+  // Reset edit script data when changing sections (unless going to script section for editing)
+  useEffect(() => {
+    if (activeSection !== "script") {
+      setEditScriptData(null);
     }
-  };
+  }, [activeSection]);
 
   // Show loading state while checking authentication
   if (!authChecked) {
@@ -83,54 +87,98 @@ function App() {
 
   // If authenticated, show the main application
   return (
-    <div className="app">
-      <Header user={user} onLogout={handleLogout} />
+    <AuthProvider>
+      <div className="app">
+        <Header user={user} onLogout={handleLogout} />
 
-      <div className="app-actions">
-        <button
-          className={`toggle-button ${!showSavedHooks ? "active" : ""}`}
-          onClick={() => setShowSavedHooks(false)}
-        >
-          Analyze Hook
-        </button>
-        <button
-          className={`toggle-button ${showSavedHooks ? "active" : ""}`}
-          onClick={() => setShowSavedHooks(true)}
-        >
-          Saved Hooks
-        </button>
+        <div className="app-nav">
+          <button
+            className={`nav-button ${activeSection === "hook" ? "active" : ""}`}
+            onClick={() => setActiveSection("hook")}
+          >
+            Hook Builder
+          </button>
+          <button
+            className={`nav-button ${
+              activeSection === "script" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("script")}
+          >
+            Script Generator
+          </button>
+          <button
+            className={`nav-button ${
+              activeSection === "saved" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("saved")}
+          >
+            Saved Hooks
+          </button>
+          <button
+            className={`nav-button ${
+              activeSection === "savedScripts" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("savedScripts")}
+          >
+            Saved Scripts
+          </button>
+          <button
+            className={`nav-button ${
+              activeSection === "apitest" ? "active" : ""
+            }`}
+            onClick={() => setActiveSection("apitest")}
+          >
+            API Test
+          </button>
+        </div>
+
+        <main className="app-content">
+          {activeSection === "hook" && (
+            <>
+              <HookForm onSubmit={handleHookSubmit} isDisabled={isLoading} />
+
+              {isLoading && (
+                <div className="loading-container">
+                  <div className="loading-spinner"></div>
+                  <p>Analyzing your hook with the T.R.I.P. framework...</p>
+                </div>
+              )}
+
+              {results && !isLoading && (
+                <HookResults
+                  results={results}
+                  onSaveSuccess={() => setActiveSection("saved")}
+                />
+              )}
+            </>
+          )}
+
+          {activeSection === "saved" && <SavedHooks />}
+
+          {activeSection === "savedScripts" && (
+            <SavedScripts
+              setActiveSection={setActiveSection}
+              setEditScriptData={setEditScriptData}
+            />
+          )}
+
+          {activeSection === "script" && (
+            <ScriptGenerator
+              initialData={editScriptData}
+              onSaveSuccess={() => setActiveSection("savedScripts")}
+            />
+          )}
+
+          {activeSection === "apitest" && <ApiTest />}
+        </main>
+
+        <footer className="app-footer">
+          <p>
+            &copy; {new Date().getFullYear()} Hook Builder - T.R.I.P. Framework
+          </p>
+        </footer>
       </div>
-
-      <main className="app-content">
-        {!showSavedHooks ? (
-          <>
-            <HookForm onSubmit={handleHookSubmit} isDisabled={isLoading} />
-
-            {isLoading && (
-              <div className="loading-container">
-                <div className="loading-spinner"></div>
-                <p>Analyzing your hook with the T.R.I.P. framework...</p>
-              </div>
-            )}
-
-            {results && !isLoading && (
-              <HookResults
-                results={results}
-                onSaveSuccess={() => setShowSavedHooks(true)}
-              />
-            )}
-          </>
-        ) : (
-          <SavedHooks />
-        )}
-      </main>
-
-      <footer className="app-footer">
-        <p>
-          &copy; {new Date().getFullYear()} Hook Builder - T.R.I.P. Framework
-        </p>
-      </footer>
-    </div>
+    </AuthProvider>
   );
 }
 
