@@ -46,19 +46,80 @@ const EMOTIONAL_ARC_OPTIONS = [
   "Quiet realization (ending in reflection)",
 ];
 
+const RESISTANCE_LEVEL_OPTIONS = ["Low", "Medium", "High"];
+
+const OPENING_STYLE_OPTIONS = [
+  "Start with a challenge",
+  "Start with humor",
+  "Start with confusion",
+  "Start mid-fight",
+  "Start with a question",
+  "Start with a provocative statement",
+];
+
+const EMOTION_ENDING_OPTIONS = [
+  "Impact (Mic drop)",
+  "Resolution (Calm, hopeful)",
+  "Silence (No final line, just realization)",
+];
+
+const PACING_OPTIONS = [
+  "Short (30 sec)",
+  "Medium (60-90 sec)",
+  "Long (2-3 min)",
+];
+
+// Character personality options for different roles
+const SINGLE_CHARACTER_PERSONALITIES = [
+  "Calm and reflective",
+  "Passionate and fiery",
+  "Cold and direct",
+  "Sarcastic and witty",
+  "Emotional but composed",
+  "Tough but sincere",
+];
+
+const MESSENGER_CHARACTER_PERSONALITIES = [
+  "Calm and persuasive",
+  "Cold and logical",
+  "Intense and passionate",
+  "Sarcastic but smart",
+  "Honest and vulnerable",
+  "Soft-spoken but firm",
+];
+
+const RESISTANT_CHARACTER_PERSONALITIES = [
+  "Defensive and angry",
+  "Confused and uncertain",
+  "Mocking and sarcastic",
+  "Hurt but guarded",
+  "Egotistical and stubborn",
+  "Quiet and emotionally blocked",
+];
+
 const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
   const [formData, setFormData] = useState({
     title: "",
     philosophy: "",
     numCharacters: 2,
     characterRoles: "",
-    tone: "",
+    tone: "Intense",
     themes: [],
-    emotionalArc: "",
+    emotionalArc: "Denial to Acceptance",
     hookDirective: "",
     finalMicDrop: "",
     creatorNote: "",
     originalScriptId: null, // Track if we're editing an existing script
+    resistanceLevel: "Medium",
+    openingStyle: "Start with a challenge",
+    messengerPersonality: "Calm and persuasive", // Default messenger personality
+    resistorPersonality: "Defensive and angry", // Default resistor personality
+    character1Personality: "Passionate and fiery", // For single character or character A in 3-character setup
+    character2Personality: "Mocking and sarcastic", // For character B in 3-character setup
+    character3Personality: "Calm and reflective", // For character C in 3-character setup
+    emotionEnding: "Impact (Mic drop)",
+    pacing: "Medium (60-90 sec)",
+    useCustomPersonalities: false,
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -74,11 +135,20 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
   }, [initialData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const { name, value, type, checked } = e.target;
+
+    setFormData((prev) => {
+      if (type === "checkbox" && name === "useCustomPersonalities") {
+        return {
+          ...prev,
+          [name]: checked,
+        };
+      }
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
   };
 
   const handleNumCharactersChange = (e) => {
@@ -87,6 +157,25 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
       ...prev,
       numCharacters,
       characterRoles: "", // Reset character roles when changing number of characters
+      // Set default personality based on the number of characters
+      messengerPersonality:
+        numCharacters > 1 ? "Calm and persuasive" : prev.messengerPersonality,
+      resistorPersonality:
+        numCharacters > 1 ? "Defensive and angry" : prev.resistorPersonality,
+      character1Personality:
+        numCharacters === 1
+          ? "Passionate and fiery"
+          : numCharacters === 3
+          ? "Calm and persuasive"
+          : prev.character1Personality,
+      character2Personality:
+        numCharacters === 3
+          ? "Mocking and sarcastic"
+          : prev.character2Personality,
+      character3Personality:
+        numCharacters === 3
+          ? "Calm and reflective"
+          : prev.character3Personality,
     }));
   };
 
@@ -106,6 +195,45 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
         };
       }
     });
+  };
+
+  // Function to get character descriptions for API call
+  const getCharacterPersonalityDescriptions = () => {
+    const { numCharacters, useCustomPersonalities } = formData;
+
+    // If using custom personalities, return the text field values
+    if (useCustomPersonalities) {
+      if (numCharacters === 1) {
+        return formData.messengerPersonality;
+      } else if (numCharacters === 2) {
+        return {
+          messengerPersonality: formData.messengerPersonality,
+          resistorPersonality: formData.resistorPersonality,
+        };
+      } else {
+        return {
+          character1: formData.character1Personality,
+          character2: formData.character2Personality,
+          character3: formData.character3Personality,
+        };
+      }
+    }
+
+    // Otherwise, return the selected dropdown values
+    if (numCharacters === 1) {
+      return formData.character1Personality;
+    } else if (numCharacters === 2) {
+      return {
+        messengerPersonality: formData.messengerPersonality,
+        resistorPersonality: formData.resistorPersonality,
+      };
+    } else {
+      return {
+        character1: formData.character1Personality,
+        character2: formData.character2Personality,
+        character3: formData.character3Personality,
+      };
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -141,10 +269,25 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
     setError(null);
 
     try {
+      // Get character personality descriptions
+      const characterPersonalities = getCharacterPersonalityDescriptions();
+
       // Always request music recommendation
       const dataToSend = {
         ...formData,
         musicRecommendation: true,
+        ...(formData.numCharacters === 1 && {
+          messengerPersonality: characterPersonalities,
+        }),
+        ...(formData.numCharacters === 2 && {
+          messengerPersonality: characterPersonalities.messengerPersonality,
+          resistorPersonality: characterPersonalities.resistorPersonality,
+        }),
+        ...(formData.numCharacters === 3 && {
+          character1Personality: characterPersonalities.character1,
+          character2Personality: characterPersonalities.character2,
+          character3Personality: characterPersonalities.character3,
+        }),
       };
 
       const result = await generateScript(dataToSend);
@@ -202,6 +345,12 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
         scriptContent: scriptResult.script,
         musicRecommendationContent: scriptResult.musicRecommendation || null,
         userId: auth.currentUser.uid,
+        resistanceLevel: formData.resistanceLevel,
+        openingStyle: formData.openingStyle,
+        messengerPersonality: formData.messengerPersonality,
+        resistorPersonality: formData.resistorPersonality,
+        emotionEnding: formData.emotionEnding,
+        pacing: formData.pacing,
       };
 
       // If editing an existing script, delete the old one first
@@ -236,13 +385,23 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
         philosophy: "",
         numCharacters: 2,
         characterRoles: "",
-        tone: "",
+        tone: "Intense",
         themes: [],
-        emotionalArc: "",
+        emotionalArc: "Denial to Acceptance",
         hookDirective: "",
         finalMicDrop: "",
         creatorNote: "",
         originalScriptId: null,
+        resistanceLevel: "Medium",
+        openingStyle: "Start with a challenge",
+        messengerPersonality: "Calm and persuasive",
+        resistorPersonality: "Defensive and angry",
+        character1Personality: "Passionate and fiery",
+        character2Personality: "Mocking and sarcastic",
+        character3Personality: "Calm and reflective",
+        emotionEnding: "Impact (Mic drop)",
+        pacing: "Medium (60-90 sec)",
+        useCustomPersonalities: false,
       });
     } else {
       // Just clear the result if generating a new script
@@ -410,7 +569,9 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="numCharacters">Number of Characters *</label>
+            <label htmlFor="numCharacters">
+              How many characters in this scene? *
+            </label>
             <select
               id="numCharacters"
               name="numCharacters"
@@ -418,22 +579,20 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
               onChange={handleNumCharactersChange}
               required
             >
-              {CHARACTER_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option} {option === 1 ? "Character" : "Characters"}
-                </option>
-              ))}
+              <option value="1">1 Character (Monologue)</option>
+              <option value="2">2 Characters (Dialogue)</option>
+              <option value="3">3 Characters (Tri-Dialogue)</option>
             </select>
           </div>
 
           <div className="form-group">
             <label htmlFor="characterRoles">
               Character Roles/Descriptions *
-              {formData.numCharacters === 1 && " (Protagonist)"}
+              {formData.numCharacters === 1 && " (Protagonist name/role)"}
               {formData.numCharacters === 2 &&
-                " (Truth-teller & Resistant Friend)"}
+                " (Messenger & Resistor names/roles)"}
               {formData.numCharacters === 3 &&
-                " (Truth-teller, Resistant Friend, Neutral/Curious Observer)"}
+                " (Character A, B, C names/roles)"}
             </label>
             <input
               type="text"
@@ -450,6 +609,252 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
               }
               required
             />
+          </div>
+
+          {/* Character Personality Options Section */}
+          <div className="form-group">
+            <div className="checkbox-option">
+              <input
+                type="checkbox"
+                id="useCustomPersonalities"
+                name="useCustomPersonalities"
+                checked={formData.useCustomPersonalities}
+                onChange={handleChange}
+              />
+              <label htmlFor="useCustomPersonalities">
+                Let me write my own personality descriptions instead
+              </label>
+            </div>
+          </div>
+
+          {formData.numCharacters === 1 && (
+            <div className="form-group">
+              <label htmlFor="character1Personality">
+                Character Personality
+              </label>
+              {formData.useCustomPersonalities ? (
+                <input
+                  type="text"
+                  id="character1Personality"
+                  name="character1Personality"
+                  value={formData.character1Personality}
+                  onChange={handleChange}
+                  placeholder="E.g., passionate but thoughtful, speaks from experience"
+                />
+              ) : (
+                <select
+                  id="character1Personality"
+                  name="character1Personality"
+                  value={formData.character1Personality}
+                  onChange={handleChange}
+                >
+                  {SINGLE_CHARACTER_PERSONALITIES.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {formData.numCharacters === 2 && (
+            <>
+              <div className="form-group">
+                <label htmlFor="messengerPersonality">
+                  Messenger Character Personality (the one with the
+                  truth/message)
+                </label>
+                {formData.useCustomPersonalities ? (
+                  <input
+                    type="text"
+                    id="messengerPersonality"
+                    name="messengerPersonality"
+                    value={formData.messengerPersonality}
+                    onChange={handleChange}
+                    placeholder="E.g., calm, wise, emotionally composed"
+                  />
+                ) : (
+                  <select
+                    id="messengerPersonality"
+                    name="messengerPersonality"
+                    value={formData.messengerPersonality}
+                    onChange={handleChange}
+                  >
+                    {MESSENGER_CHARACTER_PERSONALITIES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="resistorPersonality">
+                  Resistant Character Personality (the one being challenged)
+                </label>
+                {formData.useCustomPersonalities ? (
+                  <input
+                    type="text"
+                    id="resistorPersonality"
+                    name="resistorPersonality"
+                    value={formData.resistorPersonality}
+                    onChange={handleChange}
+                    placeholder="E.g., sarcastic, skeptical, insecure"
+                  />
+                ) : (
+                  <select
+                    id="resistorPersonality"
+                    name="resistorPersonality"
+                    value={formData.resistorPersonality}
+                    onChange={handleChange}
+                  >
+                    {RESISTANT_CHARACTER_PERSONALITIES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </>
+          )}
+
+          {formData.numCharacters === 3 && (
+            <>
+              <div className="form-group">
+                <label htmlFor="character1Personality">
+                  Character A (Main Speaker)
+                </label>
+                {formData.useCustomPersonalities ? (
+                  <input
+                    type="text"
+                    id="character1Personality"
+                    name="character1Personality"
+                    value={formData.character1Personality}
+                    onChange={handleChange}
+                    placeholder="E.g., calm and persuasive"
+                  />
+                ) : (
+                  <select
+                    id="character1Personality"
+                    name="character1Personality"
+                    value={formData.character1Personality}
+                    onChange={handleChange}
+                  >
+                    {MESSENGER_CHARACTER_PERSONALITIES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="character2Personality">
+                  Character B (Support or Contrast)
+                </label>
+                {formData.useCustomPersonalities ? (
+                  <input
+                    type="text"
+                    id="character2Personality"
+                    name="character2Personality"
+                    value={formData.character2Personality}
+                    onChange={handleChange}
+                    placeholder="E.g., defensive and angry"
+                  />
+                ) : (
+                  <select
+                    id="character2Personality"
+                    name="character2Personality"
+                    value={formData.character2Personality}
+                    onChange={handleChange}
+                  >
+                    {RESISTANT_CHARACTER_PERSONALITIES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="character3Personality">
+                  Character C (Wildcard or Audience POV)
+                </label>
+                {formData.useCustomPersonalities ? (
+                  <input
+                    type="text"
+                    id="character3Personality"
+                    name="character3Personality"
+                    value={formData.character3Personality}
+                    onChange={handleChange}
+                    placeholder="E.g., curious and observant"
+                  />
+                ) : (
+                  <select
+                    id="character3Personality"
+                    name="character3Personality"
+                    value={formData.character3Personality}
+                    onChange={handleChange}
+                  >
+                    {SINGLE_CHARACTER_PERSONALITIES.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </>
+          )}
+
+          {formData.numCharacters > 1 && (
+            <div className="form-group">
+              <label htmlFor="resistanceLevel">Resistance Level:</label>
+              <select
+                id="resistanceLevel"
+                name="resistanceLevel"
+                value={formData.resistanceLevel}
+                onChange={handleChange}
+              >
+                {RESISTANCE_LEVEL_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <div className="input-description">
+                {formData.resistanceLevel === "Low" &&
+                  "Character 2 is calm and open-minded, accepts logic quickly. Good for short or supportive scripts."}
+                {formData.resistanceLevel === "Medium" &&
+                  "Character 2 is defensive but not closed-minded. Pushes back, asks questions, starts opening up after halfway point."}
+                {formData.resistanceLevel === "High" &&
+                  "Character 2 is sarcastic, dismissive, or emotionally closed. Resists hard, only cracks in the final lines after real pressure."}
+              </div>
+            </div>
+          )}
+
+          <div className="form-group">
+            <label htmlFor="openingStyle">Opening Style</label>
+            <select
+              id="openingStyle"
+              name="openingStyle"
+              value={formData.openingStyle}
+              onChange={handleChange}
+            >
+              {OPENING_STYLE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <div className="input-description">
+              Define how the script should begin
+            </div>
           </div>
 
           <div className="form-group">
@@ -508,15 +913,41 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="hookDirective">Hook Directive (Optional)</label>
-            <input
-              type="text"
-              id="hookDirective"
-              name="hookDirective"
-              value={formData.hookDirective}
+            <label htmlFor="emotionEnding">Emotion Ending</label>
+            <select
+              id="emotionEnding"
+              name="emotionEnding"
+              value={formData.emotionEnding}
               onChange={handleChange}
-              placeholder="E.g., Start with a shocking statement about relationships"
-            />
+            >
+              {EMOTION_ENDING_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <div className="input-description">
+              Define the emotional tone of the ending
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="pacing">Script Length/Pacing</label>
+            <select
+              id="pacing"
+              name="pacing"
+              value={formData.pacing}
+              onChange={handleChange}
+            >
+              {PACING_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <div className="input-description">
+              Control the length and pacing of your script
+            </div>
           </div>
 
           <div className="form-group">
@@ -528,6 +959,18 @@ const ScriptGenerator = ({ initialData, onSaveSuccess }) => {
               value={formData.finalMicDrop}
               onChange={handleChange}
               placeholder="E.g., You either face this now or it faces you later"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="hookDirective">Hook Directive (Optional)</label>
+            <input
+              type="text"
+              id="hookDirective"
+              name="hookDirective"
+              value={formData.hookDirective}
+              onChange={handleChange}
+              placeholder="E.g., Start with a shocking statement about relationships"
             />
           </div>
 
